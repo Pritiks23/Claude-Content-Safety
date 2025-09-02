@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Content Safety Demo</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #eee; }
+textarea { width: 100%; height: 100px; margin-bottom: 10px; }
+button { padding: 10px 20px; font-size: 16px; }
+#result { margin-top: 20px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>AI Content Safety Demo (Claude API)</h1>
+<textarea id="textInput" placeholder="Enter text to check..."></textarea>
+<button onclick="checkContent()">Check Content</button>
+<div id="result"></div>
+
+<script>
+async function checkContent() {
+    const text = document.getElementById('textInput').value;
+    document.getElementById('result').innerText = 'Checking...';
+
+    // Call GitHub Actions proxy endpoint
+    try {
+        const response = await fetch('https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/run_check.json?text=' + encodeURIComponent(text));
+        const data = await response.json();
+        document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+    } catch (err) {
+        document.getElementById('result').innerText = 'Error: ' + err;
+    }
+}
+</script>
+</body>
+</html>
