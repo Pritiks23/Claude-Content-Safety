@@ -3,48 +3,181 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Content Safety Demo</title>
+<title>AI Content Safety Simulator</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
+
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #eee; }
-textarea { width: 100%; height: 100px; margin-bottom: 10px; padding: 10px; font-size: 16px; }
-button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-#result { margin-top: 20px; white-space: pre-wrap; background: #222; padding: 10px; border-radius: 5px; }
+/* Reset and body */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background: url('https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+    background-size: cover;
+    color: #fff;
+}
+
+/* Overlay to darken background */
+body::before {
+    content: '';
+    position: fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.6);
+    z-index:-1;
+}
+
+/* Container */
+.container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 30px;
+    background: rgba(0,0,0,0.7);
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+/* Header */
+h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2.5em;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #FFD700;
+    text-shadow: 1px 1px 5px #000;
+}
+
+/* Textarea */
+textarea {
+    width: 100%;
+    height: 120px;
+    padding: 15px;
+    font-size: 16px;
+    border-radius: 10px;
+    border: none;
+    outline: none;
+    margin-bottom: 20px;
+    resize: none;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+/* Button */
+button {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: linear-gradient(45deg, #FFD700, #FF8C00);
+    color: #111;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(255,140,0,0.6);
+}
+
+/* Result card */
+#result {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    font-family: 'Courier New', Courier, monospace;
+    white-space: pre-wrap;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+/* Word highlights */
+.unsafe { color: #FF4500; font-weight: bold; }
+.neutral { color: #FFD700; font-weight: bold; }
+.safe { color: #7CFC00; font-weight: bold; }
+
 </style>
 </head>
 <body>
-<h1>AI Content Safety Demo (Claude API)</h1>
-<textarea id="textInput" placeholder="Enter text to check..."></textarea>
-<button onclick="checkContent()">Check Content</button>
-<div id="result">Results will appear here.</div>
+<div class="container">
+    <h1>AI Content Safety Simulator</h1>
+    <textarea id="textInput" placeholder="Type anything to check if it's AI safe..."></textarea>
+    <button onclick="checkContent()">Check Content</button>
+    <div id="result">Results will appear here.</div>
+</div>
 
 <script>
-async function checkContent() {
-    const text = document.getElementById('textInput').value;
+// 60 negative words
+const negativeWords = [
+"kill","murder","attack","bomb","terror","rape","steal","fraud","hate","violence",
+"drugs","suicide","threat","abuse","danger","harm","explosion","assault","poison","fire",
+"fight","gun","blood","angry","panic","cry","brutal","crime","robbery","vandalism",
+"kidnap","fear","injury","pain","sad","destruction","hostile","menace","corruption","scam",
+"malice","enemy","chaos","risk","disaster","storm","earthquake","accident","virus","plague",
+"war","weapon","scream","curse","torture","suffer","attack","fight","kill","danger"
+];
+
+// 60 neutral words
+const neutralWords = [
+"angry","frustrated","sad","confused","tired","bored","stress","worry","concern","doubt",
+"hesitate","meh","okay","neutral","average","curious","observe","note","consider","ponder",
+"reflect","analyze","study","question","listen","think","wait","expect","plan","review",
+"decide","wonder","comment","mention","report","record","calculate","measure","assess","examine",
+"watch","notice","remark","hint","signal","observe","acknowledge","note","assume","infer",
+"mediate","balance","adjust","moderate","check","verify","align","organize","prepare","sort"
+];
+
+// 60 positive words
+const positiveWords = [
+"love","happy","joy","peace","friend","safe","kind","help","smile","thank",
+"success","fun","laugh","good","excited","cheer","positive","support","encourage","hope",
+"bright","brighten","relax","comfort","calm","trust","honest","respect","grateful","satisfied",
+"delight","amazing","wonderful","awesome","fabulous","brilliant","creative","smart","clever","gift",
+"achieve","win","strong","healthy","caring","generous","gentle","friendly","pleasant","funny",
+"happy","bright","optimistic","productive","joyful","peaceful","secure","reliable","loving","cheerful"
+];
+
+// Function to classify input
+function checkContent() {
+    const input = document.getElementById('textInput').value.toLowerCase();
     const resultDiv = document.getElementById('result');
-    resultDiv.innerText = 'Checking...';
-
-    // URL for JSON output from workflow
-    const url = 'https://raw.githubusercontent.com/Pritiks23/Claude-Content-Safety/refs/heads/main/run_check.json';
-
-    try {
-        const response = await fetch(url);
-        const textData = await response.text(); // get raw response
-
-        let data;
-        try {
-            data = JSON.parse(textData); // try parsing JSON
-        } catch (jsonErr) {
-            throw new Error("Could not parse JSON. The file may not exist or contains invalid content.");
-        }
-
-        // Display the JSON nicely
-        resultDiv.innerText = JSON.stringify(data, null, 2);
-
-    } catch (err) {
-        // Friendly error message
-        resultDiv.innerText = 'Error fetching content safety results:\n' + err.message;
+    if (!input.trim()) {
+        resultDiv.innerText = "Please enter some text.";
+        return;
     }
+
+    let negativeCount = 0;
+    let neutralCount = 0;
+    let positiveCount = 0;
+
+    negativeWords.forEach(word => { if(input.includes(word)) negativeCount++; });
+    neutralWords.forEach(word => { if(input.includes(word)) neutralCount++; });
+    positiveWords.forEach(word => { if(input.includes(word)) positiveCount++; });
+
+    let status = "SAFE";
+    if (negativeCount > 0) {
+        status = "UNSAFE";
+    } else if (neutralCount > 0) {
+        status = "NEUTRAL";
+    }
+
+    const result = {
+        "status": status,
+        "input": input,
+        "analysis": {
+            "negative_words_found": negativeCount,
+            "neutral_words_found": neutralCount,
+            "positive_words_found": positiveCount
+        },
+        "ai_safe": status === "SAFE"
+    };
+
+    resultDiv.innerHTML = JSON.stringify(result, null, 2);
 }
 </script>
 </body>
 </html>
+
