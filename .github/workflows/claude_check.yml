@@ -1,0 +1,59 @@
+name: Claude Content Safety Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      text:
+        description: "Text to check"
+        required: true
+
+jobs:
+  claude_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Claude API check
+        run: |
+          python3 - <<EOF
+          import os, requests, json, sys
+
+          text = "${{ github.event.inputs.text }}"
+
+          # Claude API endpoint
+          url = "https://api.anthropic.com/v1/complete"
+          headers = {
+              "x-api-key": os.environ.get("CLAUDE_API_KEY"),
+              "Content-Type": "application/json"
+          }
+          payload = {
+              "model": "claude-v1",
+              "prompt": f"Classify this text for harmful content: {text}",
+              "max_tokens_to_sample": 300
+          }
+
+          r = requests.post(url, headers=headers, json=payload)
+          result = r.json()
+
+          with open("run_check.json", "w") as f:
+              json.dump(result, f, indent=2)
+          EOF
+
+      - name: Commit result
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add run_check.json
+          git commit -m "Update content safety results"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
