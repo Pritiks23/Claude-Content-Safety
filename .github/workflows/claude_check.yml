@@ -14,22 +14,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run Claude API check
+      - name: Call Claude API
         run: |
           python3 - <<EOF
-          import os, requests, json, sys
+          import os, json, requests
 
           text = "${{ github.event.inputs.text }}"
 
-          # Claude API endpoint
           url = "https://api.anthropic.com/v1/complete"
           headers = {
               "x-api-key": os.environ.get("CLAUDE_API_KEY"),
@@ -37,7 +36,7 @@ jobs:
           }
           payload = {
               "model": "claude-v1",
-              "prompt": f"Classify this text for harmful content: {text}",
+              "prompt": f"Classify this text for harmful content and explain: {text}",
               "max_tokens_to_sample": 300
           }
 
@@ -48,7 +47,7 @@ jobs:
               json.dump(result, f, indent=2)
           EOF
 
-      - name: Commit result
+      - name: Commit results
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -57,3 +56,4 @@ jobs:
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
