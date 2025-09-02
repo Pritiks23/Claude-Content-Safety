@@ -6,29 +6,43 @@
 <title>AI Content Safety Demo</title>
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #eee; }
-textarea { width: 100%; height: 100px; margin-bottom: 10px; }
-button { padding: 10px 20px; font-size: 16px; }
-#result { margin-top: 20px; white-space: pre-wrap; }
+textarea { width: 100%; height: 100px; margin-bottom: 10px; padding: 10px; font-size: 16px; }
+button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+#result { margin-top: 20px; white-space: pre-wrap; background: #222; padding: 10px; border-radius: 5px; }
 </style>
 </head>
 <body>
 <h1>AI Content Safety Demo (Claude API)</h1>
 <textarea id="textInput" placeholder="Enter text to check..."></textarea>
 <button onclick="checkContent()">Check Content</button>
-<div id="result"></div>
+<div id="result">Results will appear here.</div>
 
 <script>
 async function checkContent() {
     const text = document.getElementById('textInput').value;
-    document.getElementById('result').innerText = 'Checking...';
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerText = 'Checking...';
 
-    // Call GitHub Actions proxy endpoint
+    // URL for JSON output from workflow
+    const url = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/run_check.json';
+
     try {
-        const response = await fetch('https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/run_check.json?text=' + encodeURIComponent(text));
-        const data = await response.json();
-        document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+        const response = await fetch(url);
+        const textData = await response.text(); // get raw response
+
+        let data;
+        try {
+            data = JSON.parse(textData); // try parsing JSON
+        } catch (jsonErr) {
+            throw new Error("Could not parse JSON. The file may not exist or contains invalid content.");
+        }
+
+        // Display the JSON nicely
+        resultDiv.innerText = JSON.stringify(data, null, 2);
+
     } catch (err) {
-        document.getElementById('result').innerText = 'Error: ' + err;
+        // Friendly error message
+        resultDiv.innerText = 'Error fetching content safety results:\n' + err.message;
     }
 }
 </script>
